@@ -20,9 +20,12 @@ class Codec {
     _buf[_pos++] = (val) & 0xFF;
   }
 
-  writeBytes(List<int> bytes) {
-    if (bytes.length == 0) return;
-    Arrays.copy(bytes, 0, _buf, _pos, bytes.length);
-    _pos += bytes.length;
+  writeBytes(List<int> bytes, [bool add_zero = true]) {
+    if (bytes.length != 0) {
+      Arrays.copy(bytes, 0, _buf, _pos, bytes.length);
+      _pos += bytes.length;
+    }
+    if (add_zero)
+      _buf[_pos++] = 0;
   }
 }

@@ -10,6 +10,7 @@ abstract class PacketType {
   static const int CANT_DO = 2;
   static const int RESET_ABILITIES = 3;
   static const int PRE_SLEEP = 4;
+  static const int UNUSED1 = 5;
   static const int NOOP = 6;
   static const int SUBMIT_JOB = 7;
   static const int JOB_CREATED = 8;
@@ -44,10 +45,12 @@ abstract class PacketType {
 
   static String getTypeName(int type) {
     return const [
+      "",
       "CAN_DO",
       "CANT_DO",
       "RESET_ABILITIES",
       "PRE_SLEEP",
+      "UNUSED1",
       "NOOP",
       "SUBMIT_JOB",
       "JOB_CREATED",
@@ -107,21 +110,62 @@ class Packet {
 
 class SubmitJobPacket extends Packet {
   String _function;
-  int _uniqueId;
+  List<int> _uniqueId;
   List<int> _workload;
 
-  SubmitJobPacket(this._function, [this._uniqueId = 0, this._workload = const []]):
+  SubmitJobPacket(this._function, [this._uniqueId = null, this._workload = const []]):
     super(Magic.REQ, PacketType.SUBMIT_JOB);
 
-  int get _BodyLength => super._BodyLength + _function.charCodes.length + 4 + _workload.length;
+  int get _BodyLength => super._BodyLength + _function.charCodes.length + 1 + _uniqueId.length + 1 + _workload.length;
 
   List<int> getBytes() {
     Codec encoder = new Codec.Encoder(Packet.HEADER_LENGTH + _BodyLength);
     encodeHeader(encoder);
     encoder.writeBytes(_function.charCodes);
-    encoder.writeUint32BE(_uniqueId);
-    encoder.writeBytes(_workload);
+    encoder.writeBytes(_uniqueId);
+    encoder.writeBytes(_workload, false);
     return encoder.Bytes;
   }
 }
 
+class CanDoPacket extends Packet {
+  String _function;
+  CanDoPacket(this._function):
+    super(Magic.REQ, PacketType.CAN_DO);
+  int get _BodyLength => super._BodyLength + _function.charCodes.length;
+  
+  List<int> getBytes() {
+    Codec encoder = new Codec.Encoder(Packet.HEADER_LENGTH + _BodyLength);
+    encodeHeader(encoder);
+    encoder.writeBytes(_function.charCodes, false);
+    return encoder.Bytes;
+  }
+}
+
+class GrabJobPacket extends Packet {
+  GrabJobPacket():
+    super(Magic.REQ, PacketType.GRAB_JOB);
+}
+
+class PreSleepPacket extends Packet {
+  PreSleepPacket():
+    super(Magic.REQ, PacketType.PRE_SLEEP);
+}
+
+class WorkCompletePacket extends Packet {
+  List<int> _res;
+  String _handle;
+  String _function;
+  WorkCompletePacket(this._handle, this._function, this._res):
+    super(Magic.REQ, PacketType.WORK_COMPLETE);
+  
+  int get _BodyLength => super._BodyLength + _handle.charCodes.length + 1 + _res.length;
+  
+  List<int> getBytes() {
+    Codec encoder = new Codec.Encoder(Packet.HEADER_LENGTH + _BodyLength);
+    encodeHeader(encoder);
+    encoder.writeBytes(_handle.charCodes);
+    encoder.writeBytes(_res, false);
+    return encoder.Bytes;    
+  }
+}

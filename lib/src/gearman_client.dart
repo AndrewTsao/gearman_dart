@@ -1,20 +1,14 @@
 part of gearman;
 
-abstract class GearmanClient {
-  factory GearmanClient.connectServer(String host, int port) {
-    var c = new GearmanClientImpl();
-    c.connectServer(host, port);
-  }
-}
-
-class GearmanClientImpl implements GearmanClient {
+class _GearmanClientImpl implements GearmanClient {
   GearmanParser _parser;
   Socket _socket;
 
-  GearmanClient() {
+  _GearmanClientImpl() {
   }
-  bool connectServer(String host, int port) {
-    _socket = new Socket('localhost', 4730);
+  
+  addServer([String host = GEARMAN_DEFAULT_HOST, int port = GEARMAN_DEFAULT_PORT]) {
+    _socket = new Socket(host, port);
     _socket.onConnect = () {
       _parser = new GearmanParser();
 
@@ -58,10 +52,13 @@ class GearmanClientImpl implements GearmanClient {
       input.onData = handler;
 
       var os = _socket.outputStream;
-      var packet = new SubmitJobPacket('reverse', 0, 'Test String'.charCodes);
-      os.write(packet.getBytes());
-      os.write(packet.getBytes());
+      var packet = new SubmitJobPacket('reverse', [], 'Test'.charCodes);
+      print(packet.getBytes());
       os.write(packet.getBytes());
     };
+  }
+  
+  submitJob(String func, String uniqueId, List<int> data) {
+    
   }
 }
