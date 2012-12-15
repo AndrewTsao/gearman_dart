@@ -10,7 +10,13 @@ class _State {
   static const int FAILURE = 7;
 }
 
-class GearmanParser {
+/**
+ * TODO: Parser 还可以支持TEXT模式，包开头为0表示Binary，否则为行文本模式
+ * 文本模式是以包含.的单行结束（多行命令）。而maxqueue和version则只返回一行结束。
+ * 文本模式主要是用于管理服务器和查询服务器的。
+ */
+
+class _GearmanParser {
   int _state;
   List<int> _buffer;
   int _index;
@@ -18,12 +24,12 @@ class GearmanParser {
   int _remainingBody;
 
   List<int> _temp;
-  int _packetMagic;
-  int _packetType;
+  _Magic _packetMagic;
+  _Type _packetType;
   int _packetLength;
 
-  int get packetMagic => _packetMagic;
-  int get packetType => _packetType;
+  _Magic get packetMagic => _packetMagic;
+  _Type get packetType => _packetType;
   int get packetLength => _packetLength;
 
   _reset() {
@@ -31,7 +37,7 @@ class GearmanParser {
     _temp = new List();
   }
 
-  GearmanParser() {
+  _GearmanParser() {
     _remainingBody = null;
     _reset();
   }
@@ -51,26 +57,25 @@ class GearmanParser {
         int byte = _buffer[_index++];
         switch(_state) {
           case _State.START:
+            if (byte != 0) {
+              throw new GearmanParserException("Text mode unimplementation"); 
+            }
             _temp.add(byte);
             _state = _State.PACKET_MAGIC;
             break;
           case _State.PACKET_MAGIC:
             _temp.add(byte);
             if (_temp.length == 4) {
-              _packetMagic = _readUint32BE(_temp);
+              _packetMagic = new _Magic.fromMagicCode(_readUint32BE(_temp));
               _temp.clear();
-              if (_packetMagic != Magic.REQ && _packetMagic != Magic.RES) {
-                throw new GearmanParserException("Out of sync with Server");
-              }
               _state = _State.PACKET_TYPE;
             }
             break;
           case _State.PACKET_TYPE:
             _temp.add(byte);
             if (_temp.length == 4) {
-              _packetType = _readUint32BE(_temp);
+              _packetType = new _Type.fromTypeValue(_readUint32BE(_temp));
               _temp.clear();
-              // TODO: check packet type
               _state = _State.PACKET_LENGTH;
             }
             break;
@@ -102,7 +107,6 @@ class GearmanParser {
               data = new Uint8List(_remainingBody);
               data.setRange(0, _remainingBody, _buffer, _index);
             }
-
             packetData(data);
             if (_remainingBody != null) {
               _remainingBody -= data.length;

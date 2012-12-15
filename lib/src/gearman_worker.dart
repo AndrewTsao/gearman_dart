@@ -2,7 +2,8 @@ part of gearman;
 
 class _GearmanWorkerImpl implements GearmanWorker {
   Socket _socket;
-  GearmanParser _parser;
+  Uint8List _bytesBuffer;
+  _GearmanParser _parser;
   
   _GearmanWorkerImpl();
   
@@ -11,57 +12,26 @@ class _GearmanWorkerImpl implements GearmanWorker {
     
     _socket.onConnect = () {
       print("Connected!");
-      _parser = new GearmanParser();
+      _parser = new _GearmanParser();
+       
       _parser.packetReceived = () {
-        String magic = Magic.REQ == _parser.packetMagic ? "\\0REQ" : "\\0RES";
-        String type = PacketType.getTypeName(_parser.packetType);
-        print("receive $magic $type ${_parser.packetLength}");
+        var magic = _parser.packetMagic;
+        var type = _parser.packetType;
+        var bodyLength = _parser.packetLength;
+        print("receive $magic $type, bodyLength: $bodyLength");
+        if (_bytesBuffer == null)
+          _bytesBuffer = new Uint8List(bodyLength);
+        else
+          _bytesBuffer.clear();
       };
+      
       _parser.packetData = (List<int> data) {
-        if (_parser.packetType == PacketType.JOB_CREATED) {
-          print("Job created");
-          print(new String.fromCharCodes(data));
-        } else if(_parser.packetType == PacketType.WORK_COMPLETE) {
-          print("Work Complete");
-          int bb = 0;
-          for (int i = 0; i < data.length; i++) {
-            if (data[i] == 0) {
-              print(new String.fromCharCodes(data.getRange(bb, i - bb)));
-              bb = i + 1;
-            }
-          }
-          print(new String.fromCharCodes(data.getRange(bb, data.length - bb)));
-        } else if (_parser.packetType == PacketType.JOB_ASSIGN) {
-          int i = 0;
-          while(data[i] != 0 && i < data.length) i++;
-          var job_handle = new String.fromCharCodes(data.getRange(0, i));
-          i++;
-          int func_start = i;
-          while(data[i] != 0 && i < data.length) i++;
-          var function = new String.fromCharCodes(data.getRange(func_start, i - func_start));
-         
-          i++;
-          var workload = data.getRange(i, data.length - i);
-          
-          Packet workcomplete = new WorkCompletePacket(job_handle, function, workload);
-          var bytes = workcomplete.getBytes();
-          _socket.outputStream.write(bytes);
-        }
+        _bytesBuffer.addAll(data);
       };
+      
       _parser.packetEnd = () {
-        print("Received a packet");
+        var packet = new _Packet.fromBytes(_parser.packetMagic, _parser.packetType, _bytesBuffer);
         
-        if (_parser.packetType == PacketType.NO_JOB) {
-          Packet grabjob = new PreSleepPacket();
-          var bytes = grabjob.getBytes();
-          print(bytes);
-          _socket.outputStream.write(bytes);
-        } else if (_parser.packetType == PacketType.NOOP) {
-          Packet grabjob = new GrabJobPacket();
-          var bytes = grabjob.getBytes();
-          print(bytes);
-          _socket.outputStream.write(bytes);
-        }        
       };
       _parser.error = (e) {
         print(e);
@@ -78,13 +48,13 @@ class _GearmanWorkerImpl implements GearmanWorker {
       input.onData = handler;
       
       var output = _socket.outputStream;
-      Packet cando = new CanDoPacket("reverse");
-      var bytes = cando.getBytes();
+      _Packet cando = new _Packet.createCanDo("reverse");
+      var bytes = cando.toBytes();
       print(bytes);
       output.write(bytes);
       
-      Packet grabjob = new GrabJobPacket();
-      bytes = grabjob.getBytes();
+      _Packet grabjob = new _Packet.createGrabJob();
+      bytes = grabjob.toBytes();
       print(bytes);
       output.write(bytes);
     };

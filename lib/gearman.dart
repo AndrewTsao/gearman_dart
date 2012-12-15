@@ -7,11 +7,24 @@ part "src/gearman_packet.dart";
 part "src/gearman_parser.dart";
 part "src/gearman_worker.dart";
 part "src/gearman_client.dart";
-part "src/gearman_encoder.dart";
+part "src/gearman_connection.dart";
+
+/**
+ *  TODO:
+ *  charCodes 并不是NULL Terminated的字符数组，需要编码
+ * 
+ */
 
 const GEARMAN_DEFAULT_HOST =  "localhost";
 const GEARMAN_DEFAULT_PORT = 4730;
 const GEARMAN_DEFAULT_JOB_TIMEOUT = 3000;
+
+abstract class GearmanJobPriority {
+  const NORMAL = 0;
+  const LOW = 1;
+  const HIGH = 2;
+}
+
 
 /**
  *  A Gearman powered application consists of three parts: a 
@@ -42,7 +55,7 @@ abstract class GearmanClient {
     - NULL byte terminated unique ID.
     - Opaque data that is given to the function as an argument.
   */
-  void submitJob(String func, String uniqueId, List<int> data);
+  //Future<GearmanJob> submitJob(String func, List<int> data, GearmanJobPriority priority);
 }
 
 abstract class GearmanWorker {

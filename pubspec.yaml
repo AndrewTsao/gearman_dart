@@ -1,6 +1,9 @@
 name:  gearman
-description:  A sample application
-
-#dependencies:
-#  js: any
+description: a Gearman Protocol Implementation in Dart
+version: 0.0.1-dev
+authors: 
+ - Andrew Tsao <caoshiwei@gmail.com>
+homepage: https://github.com/AndrewTsao/gearman_dart
+dependencies:
+  logging: any
 #  unittest: { sdk: unittest }

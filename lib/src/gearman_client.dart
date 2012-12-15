@@ -1,8 +1,9 @@
 part of gearman;
 
 class _GearmanClientImpl implements GearmanClient {
-  GearmanParser _parser;
+  _GearmanParser _parser;
   Socket _socket;
+  List<int> _bytesBuffer;
 
   _GearmanClientImpl() {
   }
@@ -10,33 +11,41 @@ class _GearmanClientImpl implements GearmanClient {
   addServer([String host = GEARMAN_DEFAULT_HOST, int port = GEARMAN_DEFAULT_PORT]) {
     _socket = new Socket(host, port);
     _socket.onConnect = () {
-      _parser = new GearmanParser();
+      _parser = new _GearmanParser();
 
       _parser.packetReceived = () {
-        String magic = Magic.REQ == _parser.packetMagic ? "\0REQ" : "\0RES";
-        String type = PacketType.getTypeName(_parser.packetType);
-        print("receive $magic $type ${_parser.packetLength}");
+        var magic = _parser.packetMagic;
+        var type = _parser.packetType;
+        var bodyLength = _parser.packetLength;
+        print("receive $magic $type, bodyLength: $bodyLength");
+        if (_bytesBuffer == null)
+          _bytesBuffer = new List<int>();
+        else {
+          _bytesBuffer.clear();
+        }
       };
       _parser.packetData = (List<int> data) {
-        if (_parser.packetType == PacketType.JOB_CREATED) {
-          print("Job created");
-          print(new String.fromCharCodes(data));
-        } else if(_parser.packetType == PacketType.WORK_COMPLETE) {
-          print("Work Complete");
-          int bb = 0;
-          for (int i = 0; i < data.length; i++) {
-            if (data[i] == 0) {
-              print(new String.fromCharCodes(data.getRange(bb, i - bb)));
-              bb = i + 1;
-            }
-          }
-          print(new String.fromCharCodes(data.getRange(bb, data.length - bb)));
-
-
-        }
+        _bytesBuffer.addAll(data);
       };
       _parser.packetEnd = () {
         print("Received a packet");
+        var packet = new _Packet.fromBytes(_parser.packetMagic, _parser.packetType, _bytesBuffer);
+        
+        switch(packet.type) {
+          case _Type.JOB_CREATED:
+            print("job created");
+            break;
+          case _Type.WORK_COMPLETE:
+            var data = packet.getArgumentData(Argument.DATA);
+            print(new String.fromCharCodes(data));
+            break;
+          case _Type.ERROR:
+            var code = packet.getArgumentData(Argument.ERROR_CODE);
+            var text = packet.getArgumentData(Argument.ERROR_TEXT);
+            print(new String.fromCharCodes(code));
+            print(new String.fromCharCodes(text));
+            break;
+        }
       };
       _parser.error = (e) {
         print(e);
@@ -52,9 +61,8 @@ class _GearmanClientImpl implements GearmanClient {
       input.onData = handler;
 
       var os = _socket.outputStream;
-      var packet = new SubmitJobPacket('reverse', [], 'Test'.charCodes);
-      print(packet.getBytes());
-      os.write(packet.getBytes());
+      var packet = new _Packet.createSubmitJob('reverse', [], 'Test'.charCodes);
+      os.write(packet.toBytes());
     };
   }
   
