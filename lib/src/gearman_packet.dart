@@ -74,7 +74,7 @@ class _Type {
   static const JOB_CREATED = const _Type._def("JOB_CREATED", 8, const [Argument.JOB_HANDLE]);
   static const GRAB_JOB = const _Type._def("GRAB_JOB", 9, const []);
   static const NO_JOB = const _Type._def("NO_JOB", 10, const []);
-  static const JOB_ASSIGN = const _Type._def("JOB_ASSIGN", 11, const [Argument.FUNCTION_NAME, Argument.JOB_HANDLE, Argument.DATA]);
+  static const JOB_ASSIGN = const _Type._def("JOB_ASSIGN", 11, const [Argument.JOB_HANDLE, Argument.FUNCTION_NAME, Argument.DATA]);
   static const WORK_STATUS = const _Type._def("WORK_STATUS", 12, const [Argument.JOB_HANDLE, Argument.NUMERATOR, Argument.DENOMINATOR]);
   static const WORK_COMPLETE = const _Type._def("WORK_COMPLETE", 13, const [Argument.JOB_HANDLE, Argument.DATA]);
   static const WORK_FAIL = const _Type._def("WORK_FAIL", 14, const [Argument.JOB_HANDLE]);
@@ -126,6 +126,8 @@ class _Packet {
   _Magic magic;
   _Type type;
   List<List<int>> arguments;
+  
+  String toString() => "$magic $type (#${arguments==null?0:arguments.length})";
   
   _Packet.create(this.magic, this.type, [this.arguments]) {
     // TODO:

@@ -1,70 +1,73 @@
 part of gearman;
 
 class _GearmanWorkerImpl implements GearmanWorker {
-  Socket _socket;
-  Uint8List _bytesBuffer;
-  _GearmanParser _parser;
+  Connection connection;
+  var functions = new Map<String, GearmanFunction>();
+  Queue<_Packet> commandQueue = new Queue<_Packet>();
+  var _connected = false;
   
   _GearmanWorkerImpl();
   
   void addServer([String host = GEARMAN_DEFAULT_HOST, int port = GEARMAN_DEFAULT_PORT]) {
-    _socket = new Socket(host, port);
+    connection = new Connection(host, port);
     
-    _socket.onConnect = () {
+    connection.onConnect = () {
       print("Connected!");
-      _parser = new _GearmanParser();
-       
-      _parser.packetReceived = () {
-        var magic = _parser.packetMagic;
-        var type = _parser.packetType;
-        var bodyLength = _parser.packetLength;
-        print("receive $magic $type, bodyLength: $bodyLength");
-        if (_bytesBuffer == null)
-          _bytesBuffer = new Uint8List(bodyLength);
-        else
-          _bytesBuffer.clear();
-      };
-      
-      _parser.packetData = (List<int> data) {
-        _bytesBuffer.addAll(data);
-      };
-      
-      _parser.packetEnd = () {
-        var packet = new _Packet.fromBytes(_parser.packetMagic, _parser.packetType, _bytesBuffer);
-        
-      };
-      _parser.error = (e) {
-        print(e);
-      };
-      
-      var input = _socket.inputStream;
-      handler() {
-        input.onData = null;
-        List<int> buffer = input.read();
-        print(buffer);
-        _parser.streamData(buffer);
-        input.onData = handler;
+      _connected = true;
+      if (commandQueue.length > 0) {
+        while (!commandQueue.isEmpty)
+          connection.sendPacket(commandQueue.removeFirst());
       }
-      input.onData = handler;
-      
-      var output = _socket.outputStream;
-      _Packet cando = new _Packet.createCanDo("reverse");
-      var bytes = cando.toBytes();
-      print(bytes);
-      output.write(bytes);
-      
-      _Packet grabjob = new _Packet.createGrabJob();
-      bytes = grabjob.toBytes();
-      print(bytes);
-      output.write(bytes);
     };
     
-    _socket.onError = (e) {
-      print(e);
+    connection.onPacket = (_Packet packet) {
+      print(packet);
+      switch (packet.type) {
+        case _Type.NO_JOB:
+          _send(new _Packet.createPreSleep());
+          break;
+        case _Type.NOOP:
+          _Packet grabjob = new _Packet.createGrabJob();
+          _send(grabjob);
+          break;
+        case _Type.JOB_ASSIGN:
+          var data = packet.getArgumentData(Argument.DATA);
+          var jobHandle = packet.getArgumentData(Argument.JOB_HANDLE);
+          var funcName = new String.fromCharCodes(packet.getArgumentData(Argument.FUNCTION_NAME));
+          
+          try {
+            print(funcName);
+            var func = functions[funcName];
+            var res = func(jobHandle, funcName, data);
+            var pack = new _Packet.createWorkComplete(_Magic.REQ, jobHandle, res);
+            _send(pack); 
+          } catch(e) {
+            print("Error $e");
+          }
+          
+          new Timer(0, (t) {
+            _send(new _Packet.createGrabJob());
+          });
+          break;
+      }
     };
   }
   
-  void addFunction(String name, Function handler) {
-    
+  void _send(var packet) {
+    if (!commandQueue.isEmpty || !_connected) {
+      commandQueue.addLast(packet);
+      return;
+    }
+    connection.sendPacket(packet);
+  }
+  
+  void addFunction(String funcName, GearmanFunction function) {
+    if (functions.containsKey(funcName))
+      return;
+    functions[funcName] = function;
+    _Packet cando = new _Packet.createCanDo(funcName);
+    _send(cando);
+    _Packet grabjob = new _Packet.createGrabJob();
+    _send(grabjob);    
   }
 }

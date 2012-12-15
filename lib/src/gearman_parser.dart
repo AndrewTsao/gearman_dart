@@ -138,6 +138,8 @@ class _GearmanParser {
   }
 
   _releaseBuffer() {
+    _packetMagic = null;
+    _packetType = null;
     _buffer = null;
     _temp.clear();
   }
@@ -153,8 +155,10 @@ class _GearmanParser {
 
   // 处理流结束事件
   streamDone() {
-    // TODO:
-    print("stream done");
+    if (_state == _State.START) {
+      closed();
+    }
+    error(new GearmanParserException("input stream closed"));
   }
 
   // 处理流错误事件

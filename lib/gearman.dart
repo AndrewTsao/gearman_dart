@@ -2,6 +2,7 @@ library gearman;
 import 'dart:io';
 import 'dart:scalarlist';
 import 'dart:collection';
+import 'dart:isolate';
 
 part "src/gearman_packet.dart";
 part "src/gearman_parser.dart";
@@ -58,12 +59,14 @@ abstract class GearmanClient {
   //Future<GearmanJob> submitJob(String func, List<int> data, GearmanJobPriority priority);
 }
 
+typedef List<int> GearmanFunction(List<int> jobHandle, String funcName, List<int> data);
+
 abstract class GearmanWorker {
   factory GearmanWorker() => new _GearmanWorkerImpl();
   
   void addServer([String host = GEARMAN_DEFAULT_HOST, int port = GEARMAN_DEFAULT_PORT]);
   
-  void addFunction(String function, Function handler);
+  void addFunction(String funcName, GearmanFunction function);
 }
 
 abstract class GearmanRequest {
