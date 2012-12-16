@@ -11,9 +11,16 @@ part "src/gearman_client.dart";
 part "src/gearman_connection.dart";
 
 /**
- *  TODO:
- *  charCodes 并不是NULL Terminated的字符数组，需要编码
+ * log:
+ *   2012.12.15 基本完成Gearman Packet的解析工作
  * 
+ * TODO:
+ *   抽象Gearman Client/Gearman Worker/Gearman Job
+ *   面向Future和Stream的接口
+ *   基于Isolate构建并发的Worker
+ *  
+ *  FIX:
+ *  charCodes 并不是NULL Terminated的字符数组，需要编码 * 
  */
 
 const GEARMAN_DEFAULT_HOST =  "localhost";
