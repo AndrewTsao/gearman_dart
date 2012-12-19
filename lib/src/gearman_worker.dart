@@ -14,6 +14,8 @@ class _GearmanWorkerImpl implements GearmanWorker {
     connection.onConnect = () {
       print("Connected!");
       _connected = true;
+      _Packet setClientId = new _Packet.createSetClientId("SWCAO1");
+      _send(setClientId);
       if (commandQueue.length > 0) {
         while (!commandQueue.isEmpty)
           connection.sendPacket(commandQueue.removeFirst());
@@ -41,6 +43,7 @@ class _GearmanWorkerImpl implements GearmanWorker {
             var res = func(jobHandle, funcName, data);
             var pack = new _Packet.createWorkComplete(_Magic.REQ, jobHandle, res);
             _send(pack); 
+            _send(pack);
           } catch(e) {
             print("Error $e");
           }
@@ -68,6 +71,6 @@ class _GearmanWorkerImpl implements GearmanWorker {
     _Packet cando = new _Packet.createCanDo(funcName);
     _send(cando);
     _Packet grabjob = new _Packet.createGrabJob();
-    _send(grabjob);    
+    _send(grabjob);
   }
 }

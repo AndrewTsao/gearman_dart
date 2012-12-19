@@ -51,6 +51,10 @@ abstract class GearmanJobPriority {
 /**
  * SUBMIT_JOB, SUBMIT_JOB_BG, SUBMIT_JOB_HIGH, SUBMIT_JOB_HIGH_BG, 
  * SUBMIT_JOB_LOW, SUBMIT_JOB_LOW_BG
+ * 
+ * BG 类型的任务提交之后就与Client没有关系了，任务的更新和数据都不会返回给Client
+ * 而非BG的任务则会返回，而且一旦Client断开，JobServer就不会将暂留在队列中的任务清除掉，
+ * 而不分发给Worker.
  */
 abstract class GearmanClient {
   factory GearmanClient() => new _GearmanClientImpl();
@@ -64,6 +68,7 @@ abstract class GearmanClient {
     - Opaque data that is given to the function as an argument.
   */
   //Future<GearmanJob> submitJob(String func, List<int> data, GearmanJobPriority priority);
+  // Job.getStatus() 查询Job的当前进度
 }
 
 typedef List<int> GearmanFunction(List<int> jobHandle, String funcName, List<int> data);
@@ -76,14 +81,32 @@ abstract class GearmanWorker {
   void addFunction(String funcName, GearmanFunction function);
 }
 
-abstract class GearmanRequest {
-  
+abstract class GearmanWorker2 {
+  Future<bool> setClientId(String clientId);
 }
 
-abstract class GearmanResponse {
-  
-  void set OnComplete(Function callback);
+abstract class GearmanClient2 {
+  Future<GearmanJob2> submitJob(String funcName, List<int> data);
 }
+
+/**
+ * 对于一个任务，Worker只要未发送Work_Complete之前，都可以不停地通过Work_Data
+ * 包返回数据。前提是，这个任务是非BG的。BG任务返回数据的话是错误的。
+ * 
+ * 
+ */
+
+
+abstract class GearmanJob2 {
+  List<int> get jobHandle; //注意： 算上NULL不可以超出64字节
+  Future<WorkStatus> getStatus();
+  set onComplete(void callback(List<int> data));
+  set onData (void callback(List<int> data));
+  set onError(void callback(String code, String text));
+  set onException(void callback());
+  set onWarning(void callback());
+}
+
 
 class GearmanException implements Exception {
   const GearmanException([String this.message = ""]);

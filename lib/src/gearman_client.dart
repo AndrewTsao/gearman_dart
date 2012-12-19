@@ -11,7 +11,7 @@ class _GearmanClientImpl implements GearmanClient {
     connection = new Connection(host, port);
     connection.onConnect = () {
       submitJob("reverse", "hello world".charCodes);
-      submitJob("echo", "echo echo".charCodes);
+      // exit(0);
     };
     connection.onPacket = (packet) {
       print(packet);
@@ -22,13 +22,24 @@ class _GearmanClientImpl implements GearmanClient {
           var text = new String.fromCharCodes(packet.getArgumentData(Argument.ERROR_TEXT));
           print("Error: $code, $text");
           break;
+        case _Type.JOB_CREATED:
+          var jobHandle = new String.fromCharCodes(packet.getArgumentData(Argument.JOB_HANDLE));
+          print(jobHandle);
+          var getStatus = new _Packet.createGetStatus(jobHandle.charCodes);
+          connection.sendPacket(getStatus);
+          break;
         case _Type.WORK_COMPLETE: 
           var data = new String.fromCharCodes(packet.getArgumentData(Argument.DATA));
           print(data);
-          new Timer(5000, (t) {
-            submitJob("reverse", "hello world".charCodes);
-            submitJob("echo", "echo echo".charCodes);
-          });
+//          new Timer(5000, (t) {
+//            submitJob("reverse", "hello world".charCodes);
+//            submitJob("echo", "echo echo".charCodes);
+//          });
+          break;
+        case _Type.STATUS_RES:
+          print(new String.fromCharCodes(packet.getArgumentData(Argument.JOB_HANDLE)));
+          print(new String.fromCharCodes(packet.getArgumentData(Argument.KNOWN_STATUS)));
+          print(new String.fromCharCodes(packet.getArgumentData(Argument.RUNNING_STATUS)));
           break;
       };
     };
@@ -36,6 +47,11 @@ class _GearmanClientImpl implements GearmanClient {
   
   submitJob(String func, List<int> data) {
     var packet = new _Packet.createSubmitJob(func, [], data);
+    connection.sendPacket(packet);
+  }
+  
+  submitJobBg(String func, List<int> data) {
+    var packet = new _Packet.createSubmitJobBg(func, [], data);
     connection.sendPacket(packet);
   }
 }
