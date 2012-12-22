@@ -11,3 +11,60 @@ Please feel free to report issue or fork it, thank you!
 Example
 =======
 
+create a `reverse worker:
+
+<code><pre>
+  var worker = new GearmanWorker();
+  var future = worker.addServer();
+  
+  future..handleException((Exception e) {
+    print(e.toString());
+    return true;
+  })
+  ..then((v) {
+    worker.canDo("reverse");
+    
+    worker.onJobAssigned = (AssignedJob job) {
+      if (job.funcName == "reverse") {
+        var res = reverse(job.data);
+        job.sendComplete(res);
+      }
+    };
+    
+    worker.onNoJob = worker.preSleep;
+    worker.onNoOp = worker.grabJob;
+    worker.onComplete = worker.grabJob;
+    
+    worker.grabJob();
+  });
+</pre></code>
+
+create a `reverse client:
+
+<code><pre>
+  var client= new GearmanClient();
+  var future = client.addServer();
+  
+  future.then((v) {
+    // TODO: add timeout and disconnect policy
+    submitJob() {
+      var submittedJob = client.submitJob("reverse", "hello world".charCodes);
+      submittedJob
+        ..handleException((e) {
+          print(e);
+          return true;
+        })
+        ..then((job) {
+          job.onComplete = () {
+            print("job completed!");
+          };
+          job.onData = (data) {
+            print(new String.fromCharCodes(data));
+          };
+      });
+    };
+    submitJob();
+    submitJob();
+    submitJob();
+  });
+</pre></code>
