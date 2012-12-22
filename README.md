@@ -11,9 +11,9 @@ Please feel free to report issue or fork it, thank you!
 Example
 =======
 
-create a `reverse worker:
+create a 'reverse' worker:
 
-<code><pre>
+```dart
   var worker = new GearmanWorker();
   var future = worker.addServer();
   
@@ -37,11 +37,11 @@ create a `reverse worker:
     
     worker.grabJob();
   });
-</pre></code>
+```
 
-create a `reverse client:
+create a 'reverse' client:
 
-<code><pre>
+```dart
   var client= new GearmanClient();
   var future = client.addServer();
   
@@ -67,4 +67,4 @@ create a `reverse client:
     submitJob();
     submitJob();
   });
-</pre></code>
+```
