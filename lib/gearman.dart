@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:scalarlist';
 import 'dart:collection';
 import 'dart:isolate';
+import 'package:logging/logging.dart';
 
 part "src/gearman_packet.dart";
 part "src/gearman_parser.dart";
@@ -10,29 +11,17 @@ part "src/gearman_worker.dart";
 part "src/gearman_client.dart";
 part "src/gearman_connection.dart";
 
-/**
- * log:
- *   2012.12.15 基本完成Gearman Packet的解析工作
- * 
- * TODO:
- *   抽象Gearman Client/Gearman Worker/Gearman Job
- *   面向Future和Stream的接口
- *   基于Isolate构建并发的Worker
- *  
- *  FIX:
- *  charCodes 并不是NULL Terminated的字符数组，需要编码 * 
- */
-
 const GEARMAN_DEFAULT_HOST =  "localhost";
 const GEARMAN_DEFAULT_PORT = 4730;
 const GEARMAN_DEFAULT_JOB_TIMEOUT = 3000;
 
-abstract class GearmanJobPriority {
-  const NORMAL = 0;
-  const LOW = 1;
-  const HIGH = 2;
+class GearmanJobPriority {
+  final value;
+  static const NORMAL = const GearmanJobPriority._def(0);
+  static const LOW = const GearmanJobPriority._def(1);
+  static const HIGH = const GearmanJobPriority._def(2);
+  const GearmanJobPriority._def(this.value);
 }
-
 
 /**
  *  A Gearman powered application consists of three parts: a 
@@ -48,7 +37,46 @@ abstract class GearmanJobPriority {
  *  sends a response to the client through the job server.  
  */
 
+abstract class GearmanWorker {
+  factory GearmanWorker() => new _GearmanWorker();
+  
+  Future addServer([String host = GEARMAN_DEFAULT_HOST, int port = GEARMAN_DEFAULT_PORT]);
+  setClientId(String clientId);
+  canDo(String funcName, [int timeout = GEARMAN_DEFAULT_JOB_TIMEOUT]);
+  cantDo(String funcName);
+  resetAbilities();
+  grabJob();
+  grabJobUniq();
+  preSleep();
+  
+  set onJobAssigned(callback(AssignedJob job));
+  set onNoOp(callback());
+  set onNoJob(callback());
+  set onError(callback(Exception e));
+  set onComplete(callack());
+}
+
+abstract class AssignedJob {
+  GearmanWorker get worker;
+  bool get isUnique;
+  String get funcName;
+  String get handle;
+  String get uniqueId;
+  List<int> get data;
+  
+  sendData(List<int> data);
+  sendWarning(List<int> data);
+  sendException(List<int> data);
+  sendComplete([List<int> data = const []]);
+  sendFail();
+  sendStatus(int numerator, int denominator);
+  
+  // on connection break?
+}
+
+
 /**
+ * 一个Client可以连接多个Server，每一个连接都是一个Connection.
  * SUBMIT_JOB, SUBMIT_JOB_BG, SUBMIT_JOB_HIGH, SUBMIT_JOB_HIGH_BG, 
  * SUBMIT_JOB_LOW, SUBMIT_JOB_LOW_BG
  * 
@@ -58,55 +86,32 @@ abstract class GearmanJobPriority {
  */
 abstract class GearmanClient {
   factory GearmanClient() => new _GearmanClientImpl();
-  
-  void addServer([String host = GEARMAN_DEFAULT_HOST, int port = GEARMAN_DEFAULT_PORT]);
-  
-  /**
-   * Arguments:
-    - NULL byte terminated function name.
-    - NULL byte terminated unique ID.
-    - Opaque data that is given to the function as an argument.
-  */
-  //Future<GearmanJob> submitJob(String func, List<int> data, GearmanJobPriority priority);
-  // Job.getStatus() 查询Job的当前进度
+  Future addServer([String host = GEARMAN_DEFAULT_HOST, int port = GEARMAN_DEFAULT_PORT]);
+  Future<SubmittedJob> submitJob(String funcName, List<int> data, [GearmanJobPriority priority = GearmanJobPriority.NORMAL]);
+  Future<SubmittedJob> submitJobBg(String funcName, List<int> data, [GearmanJobPriority priority = GearmanJobPriority.NORMAL]);
 }
 
-typedef List<int> GearmanFunction(List<int> jobHandle, String funcName, List<int> data);
-
-abstract class GearmanWorker {
-  factory GearmanWorker() => new _GearmanWorkerImpl();
-  
-  void addServer([String host = GEARMAN_DEFAULT_HOST, int port = GEARMAN_DEFAULT_PORT]);
-  
-  void addFunction(String funcName, GearmanFunction function);
-}
-
-abstract class GearmanWorker2 {
-  Future<bool> setClientId(String clientId);
-}
-
-abstract class GearmanClient2 {
-  Future<GearmanJob2> submitJob(String funcName, List<int> data);
+abstract class JobStatus {
+  bool get known;
+  bool get running;
+  int get denominator;
+  int get numerator;
 }
 
 /**
  * 对于一个任务，Worker只要未发送Work_Complete之前，都可以不停地通过Work_Data
  * 包返回数据。前提是，这个任务是非BG的。BG任务返回数据的话是错误的。
- * 
- * 
  */
-
-
-abstract class GearmanJob2 {
-  List<int> get jobHandle; //注意： 算上NULL不可以超出64字节
-  Future<WorkStatus> getStatus();
-  set onComplete(void callback(List<int> data));
+abstract class SubmittedJob {
+  String get handle; // the length of handle no more than 64 bytes include NULL byte.
+  Future<JobStatus> getStatus();
+  set onComplete(void callback());
   set onData (void callback(List<int> data));
-  set onError(void callback(String code, String text));
-  set onException(void callback());
-  set onWarning(void callback());
+  set onException(void callback(List<int> data));
+  set onWarning(void callback(List<int> data));
+  set onFail(void callback());
+  set onStatus(void callback(JobStatus status));
 }
-
 
 class GearmanException implements Exception {
   const GearmanException([String this.message = ""]);

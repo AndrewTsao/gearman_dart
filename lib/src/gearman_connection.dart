@@ -15,9 +15,8 @@ abstract class Connection {
   void set onClosed(void close());
   void set onError(void error(e));
   
-  factory Connection([String host = 'localhost', int port = 4730]) {
-    return new _Connection(host, port);
-  }
+  factory Connection([String host = 'localhost', int port = 4730])
+    => new _Connection(host, port);
 }
 
 class _Connection implements Connection {
@@ -28,6 +27,8 @@ class _Connection implements Connection {
   Function _closed;
   Function _error;
   Function _packetReceived;
+  
+  List<_Packet> _queue;
   
   set onPacket(void callback(_Packet packet)) => _packetReceived = callback;
   set onConnect(void callback()) => _connect = callback;

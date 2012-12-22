@@ -192,6 +192,9 @@ class _Packet {
   _Packet.createGrabJob():
     this.create(_Magic.REQ, _Type.GRAB_JOB);
   
+  _Packet.createGrabJobUniq():
+    this.create(_Magic.REQ, _Type.GRAB_JOB_UNIQ);
+  
   _Packet.createNoJob():
     this.create(_Magic.RES, _Type.NO_JOB);
   
@@ -207,8 +210,8 @@ class _Packet {
   _Packet.createWorkWarning(_Magic magic, List<int> jobHandle, List<int> data):
     this.create(magic, _Type.WORK_WARNING, [jobHandle, data]);
   
-  _Packet.createWorkStatus(_Magic magic, List<int> jobHandle, List<int> data, int numerator, int denominator):
-    this.create(magic, _Type.WORK_STATUS, [jobHandle, data, numerator.toString().charCodes, denominator.toString().charCodes]);
+  _Packet.createWorkStatus(_Magic magic, List<int> jobHandle, int numerator, int denominator):
+    this.create(magic, _Type.WORK_STATUS, [jobHandle, numerator.toString().charCodes, denominator.toString().charCodes]);
  
   _Packet.createWorkException(_Magic magic, List<int> jobHandle, List<int> data):
     this.create(magic, _Type.WORK_EXCEPTION, [jobHandle, data]);

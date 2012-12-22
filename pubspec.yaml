@@ -1,6 +1,6 @@
 name:  gearman
 description: a Gearman Protocol Implementation in Dart
-version: 0.0.1-dev
+version: 0.1.0-dev
 authors: 
  - Andrew Tsao <caoshiwei@gmail.com>
 homepage: https://github.com/AndrewTsao/gearman_dart
