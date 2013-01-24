@@ -54,11 +54,11 @@ class _GearmanParser {
       while (_buffer != null &&
              _index < _lastIndex &&
              _state != _State.FAILURE) {
-        int byte = _buffer[_index++];
+        var byte = _buffer[_index++];
         switch(_state) {
           case _State.START:
             if (byte != 0) {
-              throw new GearmanParserException("Text mode unimplementation"); 
+              throw new GearmanParserException("Text mode unimplementation");
             }
             _temp.add(byte);
             _state = _State.PACKET_MAGIC;
@@ -97,8 +97,8 @@ class _GearmanParser {
             break;
           case _State.PACKET_BODY:
             _index--;
-            int dataAvailable = _lastIndex - _index;
-            List<int> data;
+            var dataAvailable = _lastIndex - _index;
+            var data;
             if (_remainingBody == null ||
                 dataAvailable <= _remainingBody) {
               data = new Uint8List(dataAvailable);

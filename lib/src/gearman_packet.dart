@@ -3,19 +3,19 @@ part of gearman;
 class _Magic {
   static const _REQ_CODE = 0x00524551;
   static const _RES_CODE = 0x00524553;
-  
+
   static const REQ = const _Magic._define(_REQ_CODE);
   static const RES = const _Magic._define(_RES_CODE);
-  
+
   final int magicCode;
   const _Magic._define(this.magicCode);
-  
+
   factory _Magic.fromMagicCode(int code) {
     if (code == _REQ_CODE) return REQ;
     if (code == _RES_CODE) return RES;
     throw new GearmanException("Invalid magic code");
   }
-  
+
   String toString() => this==REQ?"Request":"Response";
 }
 
@@ -24,7 +24,7 @@ class _Magic {
  * TEXT, FUNCTION_NAME, UNIQUE_ID, MINUTE, HOUR, DAY_OF_MONTH, MONTH, DAY_OF_WEEK,
  * EPOCH, JOB_HANDLE, OPTION, KNOWN_STATUS, RUNNING_STATUS, NUMERATOR, DENOMINATOR,
  * TIME_OUT, DATA, ERROR_CODE, ERROR_TEXT, CLIENT_ID
- */ 
+ */
 class Argument {
   static const TEXT = const Argument._def("TEXT");
   static const FUNCTION_NAME = const Argument._def("FUNCTION_NAME");
@@ -46,7 +46,7 @@ class Argument {
   static const ERROR_CODE = const Argument._def("ERROR_CODE");
   static const ERROR_TEXT = const Argument._def("ERROR_TEXT");
   static const CLIENT_ID = const Argument._def("CLIENT_ID");
-  
+
   final name;
   const Argument._def(this.name);
   toString() => name;
@@ -99,24 +99,25 @@ class _Type {
   static const SUBMIT_JOB_LOW = const _Type._def("SUBMIT_JOB_LOW", 33, const [Argument.FUNCTION_NAME, Argument.UNIQUE_ID, Argument.DATA]);
   static const SUBMIT_JOB_LOW_BG = const _Type._def("SUBMIT_JOB_LOW_BG", 34, const [Argument.FUNCTION_NAME, Argument.UNIQUE_ID, Argument.DATA]);
   static const SUBMIT_JOB_SCHED = const _Type._def("SUBMIT_JOB_SCHED", 35, const [Argument.FUNCTION_NAME, Argument.UNIQUE_ID, Argument.MINUTE, Argument.HOUR, Argument.DAY_OF_MONTH, Argument.MONTH, Argument.DAY_OF_WEEK, Argument.DATA]);
-  static const SUBMIT_JOB_EPOCH = const _Type._def("SUBMIT_JOB_EPOCH", 36, const [Argument.FUNCTION_NAME, Argument.UNIQUE_ID, Argument.EPOCH, Argument.DATA]); 
+  static const SUBMIT_JOB_EPOCH = const _Type._def("SUBMIT_JOB_EPOCH", 36, const [Argument.FUNCTION_NAME, Argument.UNIQUE_ID, Argument.EPOCH, Argument.DATA]);
   static const PREDEFINED_TYPES = const [TEXT,CAN_DO,CANT_DO,RESET_ABILITIES,PRE_SLEEP,UNUSED,NOOP,SUBMIT_JOB,JOB_CREATED,GRAB_JOB,NO_JOB,JOB_ASSIGN,WORK_STATUS,WORK_COMPLETE,WORK_FAIL,GET_STATUS,ECHO_REQ,ECHO_RES,SUBMIT_JOB_BG,ERROR,STATUS_RES,SUBMIT_JOB_HIGH,SET_CLIENT_ID,CAN_DO_TIMEOUT,ALL_YOURS,WORK_EXCEPTION,OPTION_REQ,OPTION_RES,WORK_DATA,WORK_WARNING,GRAB_JOB_UNIQ,JOB_ASSIGN_UNIQ,SUBMIT_JOB_HIGH_BG,SUBMIT_JOB_LOW,SUBMIT_JOB_LOW_BG,SUBMIT_JOB_SCHED,SUBMIT_JOB_EPOCH];
-  
+
   final name;
   final typeValue;
   final args;
   get argc => args.length;
-  
+
   const _Type._def(this.name, this.typeValue,[this.args = const []]);
-  
+
   factory _Type.fromTypeValue(int value) {
-    if (!(0 <= value && value <= PREDEFINED_TYPES.length))
+    if (!(0 <= value && value <= PREDEFINED_TYPES.length)) {
       throw new GearmanException("Invalid packet type");
+    }
     return PREDEFINED_TYPES[value];
   }
 
   int indexOfArgument(Argument argument) => args.indexOf(argument);
-  
+
   toString() => name;
 }
 
@@ -126,26 +127,28 @@ class _Packet {
   _Magic magic;
   _Type type;
   List<List<int>> arguments;
-  
+
   String toString() => "$magic $type (#${arguments==null?0:arguments.length})";
-  
+
   _Packet.create(this.magic, this.type, [this.arguments]) {
     // TODO:
     assert(type != _Type.TEXT);
-    
-    if (arguments == null)
+
+    if (arguments == null) {
       arguments = new List<List<int>>();
-    for (int i = 0; i < arguments.length; i++) {
-      if (arguments[i] == null)
-        arguments[i] = new List<int>(0);
     }
-    
+    for (var i = 0; i < arguments.length; i++) {
+      if (arguments[i] == null) {
+        arguments[i] = new List<int>(0);
+      }
+    }
+
     if (arguments.length != type.argc) {
       throw new GearmanException("Illegal arguments, packet($type) require ${type.argc}, but got ${arguments.length}");
     }
-  
-    for (int i = 0; i < arguments.length - 1; i++) {
-      for (int j = 0; j < arguments[i].length; j++) {
+
+    for (var i = 0; i < arguments.length - 1; i++) {
+      for (var j = 0; j < arguments[i].length; j++) {
         if (arguments[i][j] == 0) {
           throw new GearmanException("Illegal arguments $i contains null value.");
         }
@@ -155,31 +158,31 @@ class _Packet {
 
   _Packet.createEchoReq(List<int> data):
     this.create(_Magic.REQ, _Type.ECHO_REQ, [data]);
-  
+
   _Packet.createCanDo(String funcName):
     this.create(_Magic.REQ, _Type.CAN_DO, [funcName.charCodes]);
-  
+
   _Packet.createCantDo(String funcName):
     this.create(_Magic.REQ, _Type.CANT_DO, [funcName.charCodes]);
-  
+
   _Packet.createResetAbilities():
     this.create(_Magic.REQ, _Type.RESET_ABILITIES);
-  
+
   _Packet.createPreSleep():
     this.create(_Magic.REQ, _Type.PRE_SLEEP);
-  
+
   _Packet.createNoOp():
     this.create(_Magic.RES, _Type.NOOP);
-  
+
   _Packet.createSubmitJob(String funcName, List<int> uid, List<int> data):
     this.create(_Magic.REQ, _Type.SUBMIT_JOB, [funcName.charCodes, uid, data]);
-  
+
   _Packet.createSubmitJobBg(String funcName, List<int> uid, List<int> data):
     this.create(_Magic.REQ, _Type.SUBMIT_JOB_BG, [funcName.charCodes, uid, data]);
-  
+
   _Packet.createSubmitJobHigh(String funcName, List<int> uid, List<int> data):
     this.create(_Magic.REQ, _Type.SUBMIT_JOB_HIGH, [funcName.charCodes, uid, data]);
-  
+
   _Packet.createSubmitJobHighBg(String function, List<int> uid, List<int> data):
     this.create(_Magic.REQ, _Type.SUBMIT_JOB_HIGH_BG, [function.charCodes, uid, data]);
 
@@ -191,34 +194,34 @@ class _Packet {
 
   _Packet.createGrabJob():
     this.create(_Magic.REQ, _Type.GRAB_JOB);
-  
+
   _Packet.createGrabJobUniq():
     this.create(_Magic.REQ, _Type.GRAB_JOB_UNIQ);
-  
+
   _Packet.createNoJob():
     this.create(_Magic.RES, _Type.NO_JOB);
-  
+
   _Packet.createWorkComplete(_Magic magic, List<int> jobHandle, List<int> data):
     this.create(magic, _Type.WORK_COMPLETE, [jobHandle, data]);
 
   _Packet.createWorkFail(_Magic magic, List<int> jobHandle):
     this.create(magic, _Type.WORK_FAIL, [jobHandle]);
- 
+
   _Packet.createWorkData(_Magic magic, List<int> jobHandle, List<int> data):
     this.create(magic, _Type.WORK_DATA, [jobHandle, data]);
- 
+
   _Packet.createWorkWarning(_Magic magic, List<int> jobHandle, List<int> data):
     this.create(magic, _Type.WORK_WARNING, [jobHandle, data]);
-  
+
   _Packet.createWorkStatus(_Magic magic, List<int> jobHandle, int numerator, int denominator):
     this.create(magic, _Type.WORK_STATUS, [jobHandle, numerator.toString().charCodes, denominator.toString().charCodes]);
- 
+
   _Packet.createWorkException(_Magic magic, List<int> jobHandle, List<int> data):
     this.create(magic, _Type.WORK_EXCEPTION, [jobHandle, data]);
-  
+
   _Packet.createSetClientId(String id):
     this.create(_Magic.REQ, _Type.SET_CLIENT_ID, [id.charCodes]);
- 
+
   _Packet.createCanDoTimeout(String funcName, int timeout):
     this.create(_Magic.REQ, _Type.CAN_DO_TIMEOUT, [funcName.charCodes, timeout.toString().charCodes]);
 
@@ -227,28 +230,29 @@ class _Packet {
 
   _Packet.createJobAssignUniq(List<int> jobHandle, String funcName, List<int> uniqueId, List<int> data):
     this.create(_Magic.RES, _Type.JOB_ASSIGN_UNIQ, [jobHandle, funcName.charCodes, uniqueId, data]);
-  
+
   _Packet.createGetStatus(List<int> jobHandle):
     this.create(_Magic.REQ, _Type.GET_STATUS, [jobHandle]);
-    
+
   /**
-   * Parse packet body, create a gearman packet. 
+   * Parse packet body, create a gearman packet.
    */
   _Packet.fromBytes(this.magic, this.type, [List<int> bytes]) {
-    int argc = type.argc;
+    var argc = type.argc;
     if (arguments == null) {
       arguments = new List<List<int>>(argc);
     }
     if (bytes != null) {
-      int beg = 0;
-      int argi = 0;
-      int i = 0;
+      var beg = 0;
+      var argi = 0;
+      var i = 0;
       for (; i < bytes.length; i++) {
         if (bytes[i] == 0) {
           arguments[argi++] = bytes.getRange(beg, i - beg);
           beg = i + 1;
-          if (argi == argc - 1)
+          if (argi == argc - 1) {
             break;
+          }
         }
       }
       if (argc > 0) {
@@ -257,23 +261,25 @@ class _Packet {
       assert(argi == argc);
     }
   }
-  
+
   List<int> getArgumentData(Argument arg) =>
       arguments[type.indexOfArgument(arg)];
 
   int _calcBodySize() {
-    int size = 0;
-    if (type.argc == 0)
+    var size = 0;
+    if (type.argc == 0) {
       return size;
-    
+    }
+
     size += type.argc - 1;
-    for (var arg in arguments)
+    for (var arg in arguments) {
       size += arg.length;
+    }
     return size;
   }
 
   static int _writeUint32BE(List<int> byteBuffer, int end, int val) {
-    int pos =  end;
+    var pos =  end;
     assert(pos + 4 <= byteBuffer.length);
     byteBuffer[pos++] = (val >> 24) & 0xFF;
     byteBuffer[pos++] = (val >> 16) & 0xFF;
@@ -281,27 +287,29 @@ class _Packet {
     byteBuffer[pos++] = (val) & 0xFF;
     return pos - end;
   }
-  
+
   static int _writeBytes(List<int> byteBuffer, int end, List<int> bytes, [bool add_zero = true]) {
     var pos = end;
     if (bytes.length != 0) {
       Arrays.copy(bytes, 0, byteBuffer, pos, bytes.length);
       pos += bytes.length;
     }
-    if (add_zero)
+    if (add_zero) {
       byteBuffer[pos++] = 0;
+    }
     return pos - end;
-  }  
-  
+  }
+
   List<int> toBytes() {
-    int bodyLength = _calcBodySize();
-    List<int> byteBuffer = new List<int>(HEADER_SIZE + bodyLength);
-    int pos = 0;
+    var bodyLength = _calcBodySize();
+    var byteBuffer = new List<int>(HEADER_SIZE + bodyLength);
+    var pos = 0;
     pos += _writeUint32BE(byteBuffer, pos, magic.magicCode);
     pos += _writeUint32BE(byteBuffer, pos, type.typeValue);
     pos += _writeUint32BE(byteBuffer, pos, bodyLength);
-    for (int i = 0; i < arguments.length; i++)
+    for (var i = 0; i < arguments.length; i++) {
       pos += _writeBytes(byteBuffer, pos, arguments[i], i != arguments.length - 1);
+    }
     assert(pos == bodyLength + HEADER_SIZE);
     return byteBuffer;
   }

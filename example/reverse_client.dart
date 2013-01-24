@@ -4,15 +4,15 @@ import "package:logging/logging.dart";
 _configurateLogger() {
   final root = Logger.root;
   root.level = Level.ALL;
-  root.on.record.add((LogRecord rec) => print("${rec.time} [${rec.level}] [${rec.loggerName}] ${rec.message}"));  
+  root.on.record.add((LogRecord rec) => print("${rec.time} [${rec.level}] [${rec.loggerName}] ${rec.message}"));
 }
 
 main() {
   _configurateLogger();
-  
+
   var client= new GearmanClient();
   var future = client.addServer();
-  
+
   future.then((v) {
     // TODO: add timeout and disconnect policy
     submitJob() {

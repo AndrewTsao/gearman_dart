@@ -4,6 +4,7 @@ import 'dart:scalarlist';
 import 'dart:collection';
 import 'dart:isolate';
 import 'package:logging/logging.dart';
+import 'dart:async';
 
 part "src/gearman_packet.dart";
 part "src/gearman_parser.dart";
@@ -24,22 +25,22 @@ class GearmanJobPriority {
 }
 
 /**
- *  A Gearman powered application consists of three parts: a 
- *  client, a worker, and a job server. 
- *  
+ *  A Gearman powered application consists of three parts: a
+ *  client, a worker, and a job server.
+ *
  *  The client is responsible for creating a job to be run and
- *  sending it to a job server. 
- *  
+ *  sending it to a job server.
+ *
  *  The job server will find a suitable worker that can run the
- *  job and forwards the job on. 
- *   
- *  The worker performs the work requested by the client and 
- *  sends a response to the client through the job server.  
+ *  job and forwards the job on.
+ *
+ *  The worker performs the work requested by the client and
+ *  sends a response to the client through the job server.
  */
 
 abstract class GearmanWorker {
   factory GearmanWorker() => new _GearmanWorker();
-  
+
   Future addServer([String host = GEARMAN_DEFAULT_HOST, int port = GEARMAN_DEFAULT_PORT]);
   setClientId(String clientId);
   canDo(String funcName, [int timeout = GEARMAN_DEFAULT_JOB_TIMEOUT]);
@@ -48,7 +49,7 @@ abstract class GearmanWorker {
   grabJob();
   grabJobUniq();
   preSleep();
-  
+
   set onJobAssigned(callback(AssignedJob job));
   set onNoOp(callback());
   set onNoJob(callback());
@@ -63,23 +64,23 @@ abstract class AssignedJob {
   String get handle;
   String get uniqueId;
   List<int> get data;
-  
+
   sendData(List<int> data);
   sendWarning(List<int> data);
   sendException(List<int> data);
   sendComplete([List<int> data = const []]);
   sendFail();
   sendStatus(int numerator, int denominator);
-  
+
   // on connection break?
 }
 
 
 /**
  * 一个Client可以连接多个Server，每一个连接都是一个Connection.
- * SUBMIT_JOB, SUBMIT_JOB_BG, SUBMIT_JOB_HIGH, SUBMIT_JOB_HIGH_BG, 
+ * SUBMIT_JOB, SUBMIT_JOB_BG, SUBMIT_JOB_HIGH, SUBMIT_JOB_HIGH_BG,
  * SUBMIT_JOB_LOW, SUBMIT_JOB_LOW_BG
- * 
+ *
  * BG 类型的任务提交之后就与Client没有关系了，任务的更新和数据都不会返回给Client
  * 而非BG的任务则会返回，而且一旦Client断开，JobServer就不会将暂留在队列中的任务清除掉，
  * 而不分发给Worker.

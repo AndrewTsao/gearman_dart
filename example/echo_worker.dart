@@ -18,7 +18,7 @@ main(){
       job.sendComplete();
       print("complete echo");
     };
-    
+
     worker.onComplete = worker.grabJob;
     worker.onNoJob = worker.preSleep;
     worker.onNoOp = worker.grabJob;
